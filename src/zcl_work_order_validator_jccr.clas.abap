@@ -20,6 +20,7 @@ CLASS zcl_work_order_validator_jccr DEFINITION
                             RETURNING VALUE(rv_valid)  TYPE abap_bool,
 
       validate_update_order IMPORTING iv_id_work_order TYPE zde_work_order_id_jccr
+                                      iv_id_customer   TYPE zde_costumer_id_jccr
                                       iv_status        TYPE zde_status_jccr
                                       out              TYPE REF TO if_oo_adt_classrun_out
                             RETURNING VALUE(rv_valid)  TYPE abap_bool,
@@ -32,8 +33,7 @@ CLASS zcl_work_order_validator_jccr DEFINITION
       validate_status_and_priority IMPORTING iv_status       TYPE zde_status_jccr
                                              iv_priority     TYPE zde_priority_jccr
                                              out             TYPE REF TO if_oo_adt_classrun_out
-                                   RETURNING VALUE(rv_valid) TYPE abap_bool,
-      constructor.
+                                   RETURNING VALUE(rv_valid) TYPE abap_bool.
 
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -41,6 +41,9 @@ CLASS zcl_work_order_validator_jccr DEFINITION
     CONSTANTS: c_valid_status   TYPE string VALUE 'PE CO',
                c_valid_priority TYPE string VALUE 'A'.
 
+    DATA: lx_error TYPE REF TO cx_sy_open_sql_db.
+
+    "Lllamar la clase con los metodos CRUD
     DATA: go_crud TYPE REF TO zcl_work_order_crud_handlerjcc.
 
     METHODS:
@@ -63,36 +66,38 @@ ENDCLASS.
 
 CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
-  METHOD constructor.
-
-*    IF go_crud IS INITIAL.
-*      go_crud = NEW zcl_work_order_crud_handlerjcc( ).
-*    ENDIF.
-
-  ENDMETHOD.
 
   METHOD if_oo_adt_classrun~main.
-
-*    DATA(lo_exec) = NEW zcl_work_order_validator_jccr( ).
 
     IF go_crud IS INITIAL.
       go_crud = NEW zcl_work_order_crud_handlerjcc( out ).
     ENDIF.
 
-    DATA(lv_operacion) = 'CREARTECNICO'.
+    DATA(lv_operacion) = 'UPDATE'.
     .
     CASE lv_operacion.
 
       WHEN 'CREARCLIENTE'.
         TRY.
-            INSERT ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = 1
+            INSERT ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = '1'
                                                                 name = 'Juan Camilo Cadavid'
                                                                 address = 'Calle 5 S N 8'
                                                                 phone = 3126911427 ) ) ).
             IF  sy-subrc EQ 0.
-              out->write( |Orden insertada correctamente. Registro: { sy-dbcnt }| ).
+              out->write( |Cliente creado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
-          CATCH cx_sy_open_sql_db INTO DATA(lx_error).
+          CATCH cx_sy_open_sql_db INTO lx_error.
+            out->write( |Error SQL: { lx_error->get_text( ) }| ).
+            RETURN.
+        ENDTRY.
+
+      WHEN 'ELIMINARCLIENTE'.
+        TRY.
+            DELETE ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = 1 ) ) ).
+            IF  sy-subrc EQ 0.
+              out->write( |Cliente eliminado correctamente. Registro: { sy-dbcnt }| ).
+            ENDIF.
+          CATCH cx_sy_open_sql_db INTO lx_error.
             out->write( |Error SQL: { lx_error->get_text( ) }| ).
             RETURN.
         ENDTRY.
@@ -100,96 +105,91 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       WHEN 'CREARTECNICO'.
 
         TRY.
-            INSERT zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = 001
+            INSERT zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = '01'
                                                                 name = 'Andres Gomez'
                                                                 specialty = 'electronic engineer' ) ) ).
             IF  sy-subrc EQ 0.
-              out->write( |Orden insertada correctamente. Registro: { sy-dbcnt }| ).
+              out->write( |Tecnico creado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
-          CATCH cx_sy_open_sql_db INTO DATA(lx_errorr).
-            out->write( |Error SQL: { lx_errorr->get_text( ) }| ).
+          CATCH cx_sy_open_sql_db INTO lx_error.
+            out->write( |Error SQL: { lx_error->get_text( ) }| ).
             RETURN.
         ENDTRY.
 
+      WHEN 'ELIMINARTECNICO'.
+
+        TRY.
+            DELETE zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = 1 ) ) ).
+            IF  sy-subrc EQ 0.
+              out->write( |Tecnico eliminado correctamente. Registro: { sy-dbcnt }| ).
+            ENDIF.
+          CATCH cx_sy_open_sql_db INTO lx_error.
+            out->write( |Error SQL: { lx_error->get_text( ) }| ).
+            RETURN.
+        ENDTRY.
 
       WHEN 'READ'.
-
-        read_order( iv_id_work_order = '123456789'
+      "   Leer orden de trabajo
+        read_order( iv_id_work_order = '0223456789'
                     out              = out ).
 
-      WHEN 'CREATE'.
-        "   Creacion orden de trabajo
-*
-        validate_create_order(
-           iv_id_customer   = 'CUST999'
-           iv_id_technician = 'TECH888'
-           iv_priority      = 'B'
-           out              = out
-         ).
+     WHEN 'CREATE'.
+      "   Creacion orden de trabajo
+           IF me->validate_create_order(
+                     iv_id_customer   = '1'
+                     iv_id_technician = '01'
+                     iv_priority      = 'A'
+                     out              = out ).
+
+            go_crud->create_work_order(
+             EXPORTING
+                                iv_id_work_order = '0223456789'
+                                iv_id_customer   = '1'
+                                iv_id_technician = '01'
+                                iv_status = 'PE'
+                                iv_priority   = 'A'
+                                iv_description = 'Nueva orden' ).
+
+             read_order( iv_id_work_order = '0223456789'
+                         out              = out ).
+
+           ENDIF.
+           RETURN.
+
 
       WHEN 'UPDATE'.
         "   Actualizacion orden de trabajo
-*    lo_exec->validate_delete_order(
-*                        EXPORTING
-*                          iv_id_work_order   = '0000000000'
-*                          iv_status = 'C'
-*                          out           = out ).
+           IF me->validate_update_order(
+                     iv_id_work_order   = '0123456789'
+                     iv_id_customer   = '1'
+                     iv_status      = 'PE'
+                     out              = out ).
+
+             go_crud->update_work_order(
+             EXPORTING
+                               iv_id_work_order = '0123456789'
+                               iv_id_customer   = '1'
+                               iv_id_technician = '01'
+                               iv_status = 'CO'
+                               iv_priority   = 'A'
+                               iv_description = 'Orden completada' ).
+
+             read_order( iv_id_work_order = '0123456789'
+                         out              = out ).
+
+           ENDIF.
+           RETURN.
+
+
       WHEN 'DELETE'.
         "   Eliminacion orden de trabajo
 *
-*    lo_exec->validate_delete_order(
-*                        EXPORTING
-*                          iv_id_work_order   = '0000000000'
-*                          iv_status = 'C'
-*                          out           = out ).
+
       WHEN 'ESTADOYPRIORIDAD'.
         "   Estado y prioridad
-*
-*    lo_exec->validate_delete_order(
-*                        EXPORTING
-*                          iv_id_work_order   = '0000000000'
-*                          iv_status = 'C'
-*                          out           = out ).
+
     ENDCASE.
 
-
-  ENDMETHOD.
-
-  METHOD validate_create_order.
-
-    " Validación de parámetros
-
-    " Check if customer exists
-    IF iv_id_customer   IS INITIAL OR
-       iv_id_technician IS INITIAL OR
-       iv_priority      IS INITIAL.
-      "iv_priority NOT IN c_valid_priority.
-      rv_valid = abap_false.
-      RETURN.
-    ENDIF.
-
-    IF check_customer_exists( iv_id_customer = iv_id_customer
-                              out            = out            ) = abap_false.
-
-       out->write( 'Customer not exists' ).
-       RETURN.
-
-    ENDIF.
-
-    IF check_technician_exists( iv_id_technician = iv_id_technician
-                                out              = out            ) = abap_false.
-      out->write( 'Technical not exists' ).
-      RETURN.
-    ENDIF.
-
-    go_crud->create_work_order(
-      EXPORTING
-        iv_id_work_order = 123456789
-        iv_id_customer   = iv_id_customer
-        iv_id_technician = iv_id_technician
-        iv_priority   = iv_priority ).
-
-    rv_valid = abap_true.
 
   ENDMETHOD.
 
@@ -201,12 +201,56 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD validate_create_order.
+
+    " Validación de parámetros
+    IF iv_id_customer  IS INITIAL OR
+       iv_id_technician IS INITIAL OR
+       iv_priority IS INITIAL.
+      rv_valid = abap_false.
+      RETURN.
+    ENDIF.
+
+    IF check_customer_exists( iv_id_customer = iv_id_customer
+                              out            = out            ) = abap_false.
+       out->write( 'Customer not exists' ).
+       RETURN.
+    ENDIF.
+
+    IF check_technician_exists( iv_id_technician = iv_id_technician
+                                out              = out            ) = abap_false.
+      out->write( 'Technical not exists' ).
+      RETURN.
+    ENDIF.
+
+    IF NOT iv_priority EQ 'A' OR iv_priority EQ 'B'.
+      rv_valid = abap_false.
+      out->write( 'Invalid priority' ).
+      RETURN.
+    ENDIF.
+
+    rv_valid = abap_true.
+
+  ENDMETHOD.
+
   METHOD validate_update_order.
 
     " Validación de parámetros
-    IF iv_id_work_order IS INITIAL OR
+    IF iv_id_work_order   IS INITIAL OR
        iv_status IS INITIAL.
       rv_valid = abap_false.
+      RETURN.
+    ENDIF.
+
+    IF check_order_exists( iv_id_work_order = iv_id_work_order
+                              out            = out            ) = abap_false.
+       out->write( 'Order not exists' ).
+       RETURN.
+    ENDIF.
+
+    IF NOT iv_status EQ 'PE'.
+      rv_valid = abap_false.
+      out->write( 'Invalid status' ).
       RETURN.
     ENDIF.
 
@@ -230,9 +274,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
     Go_crud->delete_work_order(
       EXPORTING
-        iv_id_work_order   = iv_id_work_order
-        iv_status = iv_status
-        out           = out ).
+        iv_id_work_order   = iv_id_work_order ).
 
     rv_valid = abap_true.
 
@@ -267,7 +309,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
           rv_exists = abap_true.
 
-          out->write( name = 'work_order READ'
+          out->write( name = 'Customer: '
                       data = ls_customer   ).
 
         ENDIF.
@@ -294,7 +336,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
           rv_exists = abap_true.
 
-          out->write( name = 'work_order READ'
+          out->write( name = 'technicial: '
                       data = ls_technicial ).
 
         ENDIF.
@@ -308,9 +350,51 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
   METHOD check_order_exists.
 
+    CLEAR rv_exists.
+
+    TRY.
+
+        SELECT * FROM ztwork_order_jcc
+        WHERE id_work_order EQ @iv_id_work_order
+        INTO @DATA(ls_work_order).
+        ENDSELECT.
+        IF sy-subrc EQ 0.
+          rv_exists = abap_true.
+          out->write( name = 'work_order: '
+                      data = ls_work_order ).
+        ENDIF.
+      CATCH cx_sy_open_sql_db INTO DATA(lx_error).
+        out->write( |Error SQL: { lx_error->get_text( ) }| ).
+        RETURN.
+
+    ENDTRY.
+
   ENDMETHOD.
 
   METHOD check_order_history.
+
+    CLEAR rv_exists.
+
+    TRY.
+
+        SELECT SINGLE id_work_order
+          FROM ztwork_orderhjcc
+        WHERE id_work_order EQ @iv_id_work_order
+        INTO @DATA(ls_work_order).
+        IF sy-subrc EQ 0.
+
+          rv_exists = abap_true.
+
+          out->write( name = 'work_order history: '
+                      data = ls_work_order ).
+
+        ENDIF.
+
+      CATCH cx_sy_open_sql_db INTO DATA(lx_error).
+        out->write( |Error SQL: { lx_error->get_text( ) }| ).
+        RETURN.
+    ENDTRY.
+
 
   ENDMETHOD.
 
