@@ -42,6 +42,57 @@ CLASS zcl_work_order_crud_handlertes IMPLEMENTATION.
 
 METHOD if_oo_adt_classrun~main.
 
+    DATA: lv_id_work_order TYPE zde_work_order_id_jccr VALUE '0523456789',
+          lv_id_customer   TYPE zde_costumer_id_jccr VALUE '2',
+          lv_id_technician TYPE zde_technician_id_jccr VALUE '01',
+          lv_status        TYPE zde_status_jccr VALUE 'PE',
+          lv_priority      TYPE zde_priority_jccr VALUE 'A',
+          lv_description   TYPE zde_description_jccr VALUE 'Actualizacion de orden',
+
+          lv_name_client TYPE string VALUE 'Fep Cadavid',
+          lv_address_client TYPE string VALUE 'Calle 5 S N 8',
+          lv_phone_client TYPE char13 VALUE 3126911427,
+
+          lv_name_technicial TYPE string VALUE 'Diana Restrepo',
+          lv_name_specialty TYPE string VALUE 'Sales Specialist'.
+
+ "OPERACION PRINCIPAL
+    DATA(lv_operacion_test) = 'test_read_work_order'.
+
+    CASE lv_operacion_test.
+
+    WHEN 'test_create_work_order'.
+    "test_create_work_order
+     test_create_work_order(
+                        iv_id_work_order = lv_id_work_order
+                        iv_id_customer = lv_id_customer
+                        iv_id_technician = lv_id_technician
+                        iv_status = lv_status
+                        iv_priority = lv_priority
+                        iv_description = lv_description
+                        out = out ).
+   WHEN 'test_read_work_order'.
+   "test_read_work_order
+   test_read_work_order(
+                        iv_id_work_order = lv_id_work_order
+                        out = out  ).
+
+  WHEN 'test_update_work_order'.
+  "test_update_work_order
+   test_update_work_order(
+                        iv_id_work_order = lv_id_work_order
+                        iv_id_customer = lv_id_customer
+                        iv_id_technician = lv_id_technician
+                        iv_status = lv_status
+                        iv_priority = lv_priority
+                        iv_description = lv_description
+                        out = out ).
+ WHEN 'test_delete_work_order'.
+ "test_delete_work_order
+ test_delete_work_order(
+                        iv_id_work_order = lv_id_work_order
+                        out = out  ).
+ENDCASE.
 
 ENDMETHOD.
 

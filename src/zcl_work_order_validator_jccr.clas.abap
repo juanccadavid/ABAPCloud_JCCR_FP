@@ -38,9 +38,6 @@ CLASS zcl_work_order_validator_jccr DEFINITION
   PROTECTED SECTION.
   PRIVATE SECTION.
 
-    CONSTANTS: c_valid_status   TYPE string VALUE 'PE CO',
-               c_valid_priority TYPE string VALUE 'A B'.
-
     DATA: lx_error TYPE REF TO cx_sy_open_sql_db.
 
     "Lllamar la clase con los metodos CRUD
@@ -159,42 +156,54 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
      WHEN 'CREATE'.
       "   Creacion orden de trabajo
+        " Ejemplo de AUTHORITY-CHECK, se evalua el sy-subrc y si es correcto procede
+**      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
+**      id 'ZAFUSERJCC' field lv_id_work_order
+**      id 'ACTVT' field '01'.
+**
+**      IF sy-subrc EQ 0.
+**        IF me->validate_create_order(
+**                     iv_id_customer   = lv_id_customer
+**                     iv_id_technician = lv_id_technician
+**                     iv_priority      = lv_priority
+**                     out              = out ).
+**
+**            go_crud->create_work_order(
+**             EXPORTING
+**                                iv_id_work_order = lv_id_work_order
+**                                iv_id_customer   = lv_id_customer
+**                                iv_id_technician = lv_id_technician
+**                                iv_status = lv_status
+**                                iv_priority   = lv_priority
+**                                iv_description = lv_description ).
+**           ENDIF.
+**           RETURN.
+**           ELSE.
+**           out->write( 'No tiene autorización para ejecutar la acción' ).
+**      ENDIF.
 
-      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      id 'ZAFUSERJCC' field lv_id_work_order
-      id 'ACTVT' field '01'.
-
-      IF sy-subrc EQ 0.
         IF me->validate_create_order(
                      iv_id_customer   = lv_id_customer
                      iv_id_technician = lv_id_technician
                      iv_priority      = lv_priority
                      out              = out ).
 
-            go_crud->create_work_order(
-             EXPORTING
-                                iv_id_work_order = lv_id_work_order
-                                iv_id_customer   = lv_id_customer
-                                iv_id_technician = lv_id_technician
-                                iv_status = lv_status
-                                iv_priority   = lv_priority
-                                iv_description = lv_description ).
-           ENDIF.
-           RETURN.
-           ELSE.
-           out->write( 'No tiene autorización para ejecutar la acción' ).
-      ENDIF.
+          go_crud->create_work_order(
+           EXPORTING
+                              iv_id_work_order = lv_id_work_order
+                              iv_id_customer   = lv_id_customer
+                              iv_id_technician = lv_id_technician
+                              iv_status = lv_status
+                              iv_priority   = lv_priority
+                              iv_description = lv_description ).
+        ENDIF.
+        RETURN.
 
 
       WHEN 'UPDATE'.
         "   Actualizacion orden de trabajo
 
-      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      id 'ZAFUSERJCC' field lv_id_work_order
-      id 'ACTVT' field '02'.
-
-      IF sy-subrc EQ 0.
-           IF me->validate_update_order(
+          IF me->validate_update_order(
                      iv_id_work_order   = lv_id_work_order
                      iv_id_customer   = lv_id_customer
                      iv_status      = lv_status
@@ -210,17 +219,11 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
                                iv_description = lv_description ).
            ENDIF.
            RETURN.
-         ELSE.
-           out->write( 'No tiene autorización para ejecutar la acción' ).
-     ENDIF.
 
 
     WHEN 'DELETE'.
       "   Eliminacion orden de trabajo
-      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      ID 'ZAFUSERJCC' FIELD lv_id_work_order
-      ID 'ACTVT' FIELD '06'.
-      IF sy-subrc EQ 0.
+
         IF me->validate_delete_order(
                   iv_id_work_order   = lv_id_work_order
                   iv_status      = lv_status
@@ -232,10 +235,6 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
         ENDIF.
         RETURN.
-      ELSE.
-        out->write( 'No tiene autorización para ejecutar la acción' ).
-      ENDIF.
-
 
       WHEN 'ESTADOYPRIORIDAD'.
         "   Estado y prioridad
@@ -323,7 +322,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
     ENDIF.
 
         IF iv_status NE 'PE'.
-          out->write( 'rder status is not pending' ).
+          out->write( 'Order status is not pending' ).
           RETURN.
         ENDIF.
 
