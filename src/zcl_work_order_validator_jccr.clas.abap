@@ -73,16 +73,31 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       go_crud = NEW zcl_work_order_crud_handlerjcc( out ).
     ENDIF.
 
-    DATA(lv_operacion) = 'READ'.
-    .
+    DATA: lv_id_work_order TYPE zde_work_order_id_jccr VALUE '0323456789',
+          lv_id_customer   TYPE zde_costumer_id_jccr VALUE '2',
+          lv_id_technician TYPE zde_technician_id_jccr VALUE '01',
+          lv_status        TYPE zde_status_jccr VALUE 'PE',
+          lv_priority      TYPE zde_priority_jccr VALUE 'A',
+          lv_description   TYPE zde_description_jccr VALUE 'Nueva orden',
+
+          lv_name_client TYPE string VALUE 'Fep Cadavid',
+          lv_address_client TYPE string VALUE 'Calle 5 S N 8',
+          lv_phone_client TYPE char13 VALUE 3126911427,
+
+          lv_name_technicial TYPE string VALUE 'Diana Restrepo',
+          lv_name_specialty TYPE string VALUE 'Sales Specialist'.
+
+    "OPERACION PRINCIPAL
+    DATA(lv_operacion) = 'DELETE'.
+
     CASE lv_operacion.
 
       WHEN 'CREARCLIENTE'.
         TRY.
-            INSERT ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = '2'
-                                                                name = 'Fep Cadavid'
-                                                                address = 'Calle 5 S N 8'
-                                                                phone = 3126911427 ) ) ).
+            INSERT ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = lv_id_customer
+                                                                name = lv_name_client
+                                                                address = lv_address_client
+                                                                phone = lv_phone_client ) ) ).
             IF  sy-subrc EQ 0.
               out->write( |Cliente creado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
@@ -93,7 +108,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
       WHEN 'ELIMINARCLIENTE'.
         TRY.
-            DELETE ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = 1 ) ) ).
+            DELETE ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = lv_id_customer ) ) ).
             IF  sy-subrc EQ 0.
               out->write( |Cliente eliminado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
@@ -105,9 +120,9 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       WHEN 'CREARTECNICO'.
 
         TRY.
-            INSERT zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = '01'
-                                                                name = 'Andres Gomez'
-                                                                specialty = 'electronic engineer' ) ) ).
+            INSERT zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = lv_id_technician
+                                                                name = lv_name_technicial
+                                                                specialty = lv_name_specialty ) ) ).
             IF  sy-subrc EQ 0.
               out->write( |Tecnico creado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
@@ -119,7 +134,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       WHEN 'ELIMINARTECNICO'.
 
         TRY.
-            DELETE zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = 1 ) ) ).
+            DELETE zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = lv_id_technician ) ) ).
             IF  sy-subrc EQ 0.
               out->write( |Tecnico eliminado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
@@ -132,11 +147,11 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       "   Leer orden de trabajo
 
       AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      ID 'ZAFUSERJCC' FIELD '0223456789'
+      ID 'ZAFUSERJCC' FIELD lv_id_work_order
       ID 'ACTVT' FIELD '03'.
 
       IF sy-subrc EQ 0.
-        read_order( iv_id_work_order = '0223456789'
+        read_order( iv_id_work_order = lv_id_work_order
                     out              = out ).
       ELSE.
       out->write( 'No tiene autorización para ejecutar la acción' ).
@@ -146,24 +161,24 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       "   Creacion orden de trabajo
 
       AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      id 'ZAFUSERJCC' field '0323456789'
+      id 'ZAFUSERJCC' field lv_id_work_order
       id 'ACTVT' field '01'.
 
       IF sy-subrc EQ 0.
         IF me->validate_create_order(
-                     iv_id_customer   = '1'
-                     iv_id_technician = '01'
-                     iv_priority      = 'A'
+                     iv_id_customer   = lv_id_customer
+                     iv_id_technician = lv_id_technician
+                     iv_priority      = lv_priority
                      out              = out ).
 
             go_crud->create_work_order(
              EXPORTING
-                                iv_id_work_order = '0323456789'
-                                iv_id_customer   = '2'
-                                iv_id_technician = '01'
-                                iv_status = 'PE'
-                                iv_priority   = 'A'
-                                iv_description = 'Nueva orden' ).
+                                iv_id_work_order = lv_id_work_order
+                                iv_id_customer   = lv_id_customer
+                                iv_id_technician = lv_id_technician
+                                iv_status = lv_status
+                                iv_priority   = lv_priority
+                                iv_description = lv_description ).
            ENDIF.
            RETURN.
            ELSE.
@@ -175,24 +190,24 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
         "   Actualizacion orden de trabajo
 
       AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      id 'ZAFUSERJCC' field '0323456789'
+      id 'ZAFUSERJCC' field lv_id_work_order
       id 'ACTVT' field '02'.
 
       IF sy-subrc EQ 0.
            IF me->validate_update_order(
-                     iv_id_work_order   = '0323456789'
-                     iv_id_customer   = '1'
-                     iv_status      = 'PE'
+                     iv_id_work_order   = lv_id_work_order
+                     iv_id_customer   = lv_id_customer
+                     iv_status      = lv_status
                      out              = out ).
 
              go_crud->update_work_order(
              EXPORTING
-                               iv_id_work_order = '0323456789'
-                               iv_id_customer   = '1'
-                               iv_id_technician = '01'
-                               iv_status = 'PE'
-                               iv_priority   = 'A'
-                               iv_description = 'Se actualiza el cliente' ).
+                               iv_id_work_order = lv_id_work_order
+                               iv_id_customer   = lv_id_customer
+                               iv_id_technician = lv_id_technician
+                               iv_status = lv_status
+                               iv_priority   = lv_priority
+                               iv_description = lv_description ).
            ENDIF.
            RETURN.
          ELSE.
@@ -203,17 +218,17 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
     WHEN 'DELETE'.
       "   Eliminacion orden de trabajo
       AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      ID 'ZAFUSERJCC' FIELD '0323456789'
+      ID 'ZAFUSERJCC' FIELD lv_id_work_order
       ID 'ACTVT' FIELD '06'.
       IF sy-subrc EQ 0.
         IF me->validate_delete_order(
-                  iv_id_work_order   = '0323456789'
-                  iv_status      = 'PE'
+                  iv_id_work_order   = lv_id_work_order
+                  iv_status      = lv_status
                   out              = out ).
 
           go_crud->delete_work_order(
           EXPORTING
-                            iv_id_work_order = '0323456789' ).
+                            iv_id_work_order = lv_id_work_order ).
 
         ENDIF.
         RETURN.
@@ -225,8 +240,8 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       WHEN 'ESTADOYPRIORIDAD'.
         "   Estado y prioridad
            IF me->validate_status_and_priority(
-                     iv_status      = 'PE'
-                     iv_priority   = 'A'
+                     iv_status      = lv_status
+                     iv_priority   = lv_priority
                      out              = out ).
            ENDIF.
            RETURN.
