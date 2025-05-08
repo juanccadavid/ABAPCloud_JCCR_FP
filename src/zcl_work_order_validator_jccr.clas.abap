@@ -109,8 +109,8 @@ ENDMETHOD.
           lv_id_customer   TYPE zde_costumer_id_jccr VALUE '2',
           lv_id_technician TYPE zde_technician_id_jccr VALUE '01',
           lv_status        TYPE zde_status_jccr VALUE 'PE',
-          lv_priority      TYPE zde_priority_jccr VALUE 'A',
-          lv_description   TYPE zde_description_jccr VALUE 'Nueva orden',
+          lv_priority      TYPE zde_priority_jccr VALUE 'B',
+          lv_description   TYPE zde_description_jccr VALUE 'Prueba actualización en status CO',
 
           lv_name_client TYPE string VALUE 'Fep Cadavid',
           lv_address_client TYPE string VALUE 'Calle 5 S N 8',
@@ -120,7 +120,7 @@ ENDMETHOD.
           lv_name_specialty TYPE string VALUE 'Sales Specialist'.
 
     "OPERACION PRINCIPAL
-    DATA(lv_operacion) = 'READ'.
+    DATA(lv_operacion) = 'ESTADOYPRIORIDAD'.
 
     CASE lv_operacion.
 
@@ -295,6 +295,7 @@ ENDMETHOD.
     ENDIF.
 
     IF iv_priority NOT IN mt_valid_priority.
+      out->write( 'Invalid priority' ).
       rv_valid = abap_false.
       RETURN.
     ENDIF.
@@ -321,6 +322,7 @@ ENDMETHOD.
     ENDIF.
 
     IF iv_status EQ mc_valid_status-completed.
+    out->write( 'Invalid status to update  - Order Completed' ).
       rv_valid = abap_false.
       RETURN.
     ENDIF.
@@ -340,7 +342,8 @@ ENDMETHOD.
       RETURN.
     ENDIF.
 
-    IF iv_status NE mc_valid_status-pending.
+    IF iv_status EQ mc_valid_status-completed.
+    out->write( 'Invalid status to delete  - Order Completed' ).
       rv_valid = abap_false.
       RETURN.
     ENDIF.
@@ -367,11 +370,13 @@ ENDMETHOD.
     ENDIF.
 
     IF iv_status NOT IN mt_valid_status.
+    out->write( 'Invalid Status - No Exist' ).
       rv_valid = abap_false.
       RETURN.
     ENDIF.
 
     IF iv_priority NOT IN mt_valid_priority.
+    out->write( 'Invalid Priority - No Exist' ).
       rv_valid = abap_false.
       RETURN.
     ENDIF.
