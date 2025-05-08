@@ -5,12 +5,13 @@ CLASS zcl_work_order_crud_handlerjcc DEFINITION
 
   PUBLIC SECTION.
 
-    METHODS:
-      constructor IMPORTING out TYPE REF TO if_oo_adt_classrun_out.
 
     INTERFACES : if_oo_adt_classrun.
 
     METHODS:
+
+      constructor IMPORTING out TYPE REF TO if_oo_adt_classrun_out,
+
       "CRUD
       read_work_order IMPORTING iv_id_work_order TYPE zde_work_order_id_jccr,
 
@@ -53,7 +54,6 @@ CLASS zcl_work_order_crud_handlerjcc IMPLEMENTATION.
 
   METHOD if_oo_adt_classrun~main.
 
-*
 
   ENDMETHOD.
 

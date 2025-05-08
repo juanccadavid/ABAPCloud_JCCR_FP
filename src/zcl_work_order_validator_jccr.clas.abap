@@ -30,16 +30,16 @@ CLASS zcl_work_order_validator_jccr DEFINITION
                                       out              TYPE REF TO if_oo_adt_classrun_out
                             RETURNING VALUE(rv_valid)  TYPE abap_bool,
 
-      validate_status_and_priority IMPORTING iv_status       TYPE zde_status_jccr
-                                             iv_priority     TYPE zde_priority_jccr
-                                             out             TYPE REF TO if_oo_adt_classrun_out
-                                   RETURNING VALUE(rv_valid) TYPE abap_bool.
+      validate_status_and_priority IMPORTING iv_status        TYPE zde_status_jccr
+                                             iv_priority      TYPE zde_priority_jccr
+                                             out              TYPE REF TO if_oo_adt_classrun_out
+                                   RETURNING VALUE(rv_valid)  TYPE abap_bool.
 
   PROTECTED SECTION.
   PRIVATE SECTION.
 
     CONSTANTS: c_valid_status   TYPE string VALUE 'PE CO',
-               c_valid_priority TYPE string VALUE 'A'.
+               c_valid_priority TYPE string VALUE 'A B'.
 
     DATA: lx_error TYPE REF TO cx_sy_open_sql_db.
 
@@ -73,14 +73,14 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       go_crud = NEW zcl_work_order_crud_handlerjcc( out ).
     ENDIF.
 
-    DATA(lv_operacion) = 'ELIMINARCLIENTE'.
+    DATA(lv_operacion) = 'READ'.
     .
     CASE lv_operacion.
 
       WHEN 'CREARCLIENTE'.
         TRY.
-            INSERT ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = '1'
-                                                                name = 'Juan Camilo Cadavid'
+            INSERT ztcustomer_jcc FROM TABLE @(  VALUE #(  (  id_customer = '2'
+                                                                name = 'Fep Cadavid'
                                                                 address = 'Calle 5 S N 8'
                                                                 phone = 3126911427 ) ) ).
             IF  sy-subrc EQ 0.
@@ -128,14 +128,29 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
             RETURN.
         ENDTRY.
 
-      WHEN 'READ'.
+    WHEN 'READ'.
       "   Leer orden de trabajo
+
+      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
+      ID 'ZAFUSERJCC' FIELD '0223456789'
+      ID 'ACTVT' FIELD '03'.
+
+      IF sy-subrc EQ 0.
         read_order( iv_id_work_order = '0223456789'
                     out              = out ).
+      ELSE.
+      out->write( 'No tiene autorización para ejecutar la acción' ).
+      ENDIF.
 
      WHEN 'CREATE'.
       "   Creacion orden de trabajo
-           IF me->validate_create_order(
+
+      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
+      id 'ZAFUSERJCC' field '0323456789'
+      id 'ACTVT' field '01'.
+
+      IF sy-subrc EQ 0.
+        IF me->validate_create_order(
                      iv_id_customer   = '1'
                      iv_id_technician = '01'
                      iv_priority      = 'A'
@@ -143,61 +158,78 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
             go_crud->create_work_order(
              EXPORTING
-                                iv_id_work_order = '0223456789'
-                                iv_id_customer   = '1'
+                                iv_id_work_order = '0323456789'
+                                iv_id_customer   = '2'
                                 iv_id_technician = '01'
                                 iv_status = 'PE'
                                 iv_priority   = 'A'
                                 iv_description = 'Nueva orden' ).
-
-             read_order( iv_id_work_order = '0223456789'
-                         out              = out ).
-
            ENDIF.
            RETURN.
+           ELSE.
+           out->write( 'No tiene autorización para ejecutar la acción' ).
+      ENDIF.
 
 
       WHEN 'UPDATE'.
         "   Actualizacion orden de trabajo
+
+      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
+      id 'ZAFUSERJCC' field '0323456789'
+      id 'ACTVT' field '02'.
+
+      IF sy-subrc EQ 0.
            IF me->validate_update_order(
-                     iv_id_work_order   = '0123456789'
+                     iv_id_work_order   = '0323456789'
                      iv_id_customer   = '1'
                      iv_status      = 'PE'
                      out              = out ).
 
              go_crud->update_work_order(
              EXPORTING
-                               iv_id_work_order = '0123456789'
+                               iv_id_work_order = '0323456789'
                                iv_id_customer   = '1'
                                iv_id_technician = '01'
-                               iv_status = 'CO'
+                               iv_status = 'PE'
                                iv_priority   = 'A'
-                               iv_description = 'Orden completada' ).
-
-             read_order( iv_id_work_order = '0123456789'
-                         out              = out ).
-
+                               iv_description = 'Se actualiza el cliente' ).
            ENDIF.
            RETURN.
+         ELSE.
+           out->write( 'No tiene autorización para ejecutar la acción' ).
+     ENDIF.
 
 
-      WHEN 'DELETE'.
-        "   Eliminacion orden de trabajo
-           IF me->validate_delete_order(
-                     iv_id_work_order   = '0000000000'
-                     iv_status      = 'PE'
-                     out              = out ).
+    WHEN 'DELETE'.
+      "   Eliminacion orden de trabajo
+      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
+      ID 'ZAFUSERJCC' FIELD '0323456789'
+      ID 'ACTVT' FIELD '06'.
+      IF sy-subrc EQ 0.
+        IF me->validate_delete_order(
+                  iv_id_work_order   = '0323456789'
+                  iv_status      = 'PE'
+                  out              = out ).
 
-             go_crud->delete_work_order(
-             EXPORTING
-                               iv_id_work_order = '0123456789' ).
+          go_crud->delete_work_order(
+          EXPORTING
+                            iv_id_work_order = '0323456789' ).
 
-           ENDIF.
-           RETURN.
+        ENDIF.
+        RETURN.
+      ELSE.
+        out->write( 'No tiene autorización para ejecutar la acción' ).
+      ENDIF.
+
 
       WHEN 'ESTADOYPRIORIDAD'.
         "   Estado y prioridad
-
+           IF me->validate_status_and_priority(
+                     iv_status      = 'PE'
+                     iv_priority   = 'A'
+                     out              = out ).
+           ENDIF.
+           RETURN.
     ENDCASE.
 
 
@@ -233,8 +265,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF NOT iv_priority EQ 'A' OR iv_priority EQ 'B'.
-      rv_valid = abap_false.
+    IF iv_priority NE 'A' AND iv_priority NE 'B'.
       out->write( 'Invalid priority' ).
       RETURN.
     ENDIF.
@@ -258,8 +289,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
        RETURN.
     ENDIF.
 
-    IF NOT iv_status EQ 'PE'.
-      rv_valid = abap_false.
+    IF iv_status NE 'PE'.
       out->write( 'Invalid status' ).
       RETURN.
     ENDIF.
@@ -277,17 +307,18 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF check_order_history( iv_id_work_order = iv_id_work_order
-                              out            = out            ) = abap_false.
-       out->write( 'Order have history' ).
-       RETURN.
-    ENDIF.
+        IF iv_status NE 'PE'.
+          out->write( 'rder status is not pending' ).
+          RETURN.
+        ENDIF.
 
-    IF iv_status EQ 'PE'.
-      rv_valid = abap_true.
-      out->write( 'Invalid status' ).
-      RETURN.
-    ENDIF.
+        IF check_order_history( iv_id_work_order = iv_id_work_order
+                                  out            = out            ) = abap_false.
+          out->write( 'Order have history' ).
+          RETURN.
+        ENDIF.
+
+       rv_valid = abap_true.
 
   ENDMETHOD.
 
@@ -299,22 +330,15 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF NOT iv_priority EQ 'A' OR iv_priority EQ 'B'.
-      rv_valid = abap_false.
-      out->write( 'Invalid priority' ).
+    IF iv_status NE 'PE' AND iv_status NE 'CO'.
+      out->write( 'Status is not valid' ).
       RETURN.
     ENDIF.
 
-    IF NOT iv_status EQ 'PE' OR iv_status EQ 'CO'.
-      rv_valid = abap_true.
-      out->write( 'Invalid status' ).
+    IF iv_priority NE 'A' AND iv_priority NE 'B'.
+      out->write( 'Priority is not valid' ).
       RETURN.
     ENDIF.
-
-
-*     check_order_exists
-
-
 
     rv_valid = abap_true.
 
