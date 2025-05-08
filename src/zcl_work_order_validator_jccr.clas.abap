@@ -33,7 +33,8 @@ CLASS zcl_work_order_validator_jccr DEFINITION
       validate_status_and_priority IMPORTING iv_status        TYPE zde_status_jccr
                                              iv_priority      TYPE zde_priority_jccr
                                              out              TYPE REF TO if_oo_adt_classrun_out
-                                   RETURNING VALUE(rv_valid)  TYPE abap_bool.
+                                   RETURNING VALUE(rv_valid)  TYPE abap_bool,
+      constructor.
 
   PROTECTED SECTION.
   PRIVATE SECTION.
@@ -55,14 +56,48 @@ CLASS zcl_work_order_validator_jccr DEFINITION
                          RETURNING VALUE(rv_exists) TYPE abap_bool,
       check_order_history IMPORTING iv_id_work_order TYPE zde_work_order_id_jccr
                                     out              TYPE REF TO if_oo_adt_classrun_out
-                          RETURNING VALUE(rv_exists) TYPE abap_bool.
+                          RETURNING VALUE(rv_exists) TYPE abap_bool,
+      check_status IMPORTING iv_status        TYPE zde_status_jccr
+                             out              TYPE REF TO if_oo_adt_classrun_out
+                   RETURNING VALUE(rv_exists) TYPE abap_bool,
+      check_priority IMPORTING iv_priority      TYPE zde_priority_jccr
+                             out              TYPE REF TO if_oo_adt_classrun_out
+                   RETURNING VALUE(rv_exists) TYPE abap_bool.
+
+      "Estructura de catalogos
+      CONSTANTS : BEGIN OF mc_valid_status,
+                    pending   TYPE zde_status_jccr VALUE 'PE',
+                    completed TYPE zde_status_jccr VALUE 'CO',
+                  END OF mc_valid_status,
+
+                  BEGIN OF mc_valid_priority,
+                    high   TYPE zde_priority_jccr VALUE 'A',
+                    low TYPE zde_priority_jccr VALUE 'B',
+                  END OF mc_valid_priority.
+
+     DATA: mt_valid_status   TYPE RANGE OF zde_status_jccr,
+           mT_valid_priority TYPE RANGE OF zde_priority_jccr.
 
 ENDCLASS.
 
 
-
 CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
+METHOD constructor.
+mt_valid_status = VALUE #( ( sign = 'I'
+                             option = 'EQ'
+                             low = mc_valid_status-completed )
+                           ( sign = 'I'
+                             option = 'EQ'
+                             low = mc_valid_status-pending ) ).
+
+mt_valid_priority = VALUE #( ( sign = 'I'
+                             option = 'EQ'
+                             low = mc_valid_priority-high )
+                           ( sign = 'I'
+                             option = 'EQ'
+                             low = mc_valid_priority-low ) ).
+ENDMETHOD.
 
   METHOD if_oo_adt_classrun~main.
 
@@ -85,7 +120,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
           lv_name_specialty TYPE string VALUE 'Sales Specialist'.
 
     "OPERACION PRINCIPAL
-    DATA(lv_operacion) = 'DELETE'.
+    DATA(lv_operacion) = 'READ'.
 
     CASE lv_operacion.
 
@@ -142,45 +177,23 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
     WHEN 'READ'.
       "   Leer orden de trabajo
+      " Ejemplo de AUTHORITY-CHECK, se evalua el sy-subrc y si es correcto procede
+*      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
+*      ID 'ZAFUSERJCC' FIELD lv_id_work_order
+*      ID 'ACTVT' FIELD '03'.
+*
+*      IF sy-subrc EQ 0.
+*        read_order( iv_id_work_order = lv_id_work_order
+*                    out              = out ).
+*      ELSE.
+*      out->write( 'No tiene autorización para ejecutar la acción' ).
+*      ENDIF.
 
-      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-      ID 'ZAFUSERJCC' FIELD lv_id_work_order
-      ID 'ACTVT' FIELD '03'.
-
-      IF sy-subrc EQ 0.
-        read_order( iv_id_work_order = lv_id_work_order
+      read_order( iv_id_work_order = lv_id_work_order
                     out              = out ).
-      ELSE.
-      out->write( 'No tiene autorización para ejecutar la acción' ).
-      ENDIF.
 
      WHEN 'CREATE'.
       "   Creacion orden de trabajo
-        " Ejemplo de AUTHORITY-CHECK, se evalua el sy-subrc y si es correcto procede
-**      AUTHORITY-CHECK OBJECT 'ZAOUSERJCC'
-**      id 'ZAFUSERJCC' field lv_id_work_order
-**      id 'ACTVT' field '01'.
-**
-**      IF sy-subrc EQ 0.
-**        IF me->validate_create_order(
-**                     iv_id_customer   = lv_id_customer
-**                     iv_id_technician = lv_id_technician
-**                     iv_priority      = lv_priority
-**                     out              = out ).
-**
-**            go_crud->create_work_order(
-**             EXPORTING
-**                                iv_id_work_order = lv_id_work_order
-**                                iv_id_customer   = lv_id_customer
-**                                iv_id_technician = lv_id_technician
-**                                iv_status = lv_status
-**                                iv_priority   = lv_priority
-**                                iv_description = lv_description ).
-**           ENDIF.
-**           RETURN.
-**           ELSE.
-**           out->write( 'No tiene autorización para ejecutar la acción' ).
-**      ENDIF.
 
         IF me->validate_create_order(
                      iv_id_customer   = lv_id_customer
@@ -336,6 +349,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD validate_status_and_priority.
 
     IF iv_status IS INITIAL OR
@@ -344,17 +358,17 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF iv_status NE 'PE' AND iv_status NE 'CO'.
-      out->write( 'Status is not valid' ).
-      RETURN.
-    ENDIF.
+   IF iv_status NOT IN mt_valid_status.
+    rv_valid = abap_false.
+    RETURN.
+  ENDIF.
 
-    IF iv_priority NE 'A' AND iv_priority NE 'B'.
-      out->write( 'Priority is not valid' ).
-      RETURN.
-    ENDIF.
+  IF iv_priority NOT IN mt_valid_priority.
+       rv_valid = abap_false.
+    RETURN.
+  ENDIF.
 
-    rv_valid = abap_true.
+  rv_valid = abap_true.
 
   ENDMETHOD.
 
@@ -453,4 +467,25 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
   ENDMETHOD.
 
+METHOD check_status.
+
+  IF iv_status NOT IN mt_valid_status.
+    rv_exists = abap_false.
+    RETURN.
+  ENDIF.
+
+  rv_exists = abap_true.
+
+ENDMETHOD.
+
+METHOD check_priority.
+
+IF iv_priority NOT IN mt_valid_priority.
+       rv_exists = abap_false.
+    RETURN.
+  ENDIF.
+
+  rv_exists = abap_true.
+
+ENDMETHOD.
 ENDCLASS.
