@@ -6,9 +6,7 @@ CLASS zcl_work_order_crud_handlerjcc DEFINITION
   PUBLIC SECTION.
 
     METHODS:
-      constructor
-        IMPORTING
-          out TYPE REF TO if_oo_adt_classrun_out.
+      constructor IMPORTING out TYPE REF TO if_oo_adt_classrun_out.
 
     INTERFACES : if_oo_adt_classrun.
 
@@ -37,6 +35,12 @@ CLASS zcl_work_order_crud_handlerjcc DEFINITION
 
     DATA: out TYPE REF TO if_oo_adt_classrun_out.
 
+    DATA: lx_error TYPE REF TO cx_sy_open_sql_db.
+
+    "Para insertar en bd de historial
+    DATA: lv_max_id TYPE ztwork_orderhjcc-id_history,
+          lv_new_id TYPE ztwork_orderhjcc-id_history.
+
 ENDCLASS.
 
 CLASS zcl_work_order_crud_handlerjcc IMPLEMENTATION.
@@ -49,17 +53,7 @@ CLASS zcl_work_order_crud_handlerjcc IMPLEMENTATION.
 
   METHOD if_oo_adt_classrun~main.
 
-**   Lectura orden de trabajo
-*    me->read_work_order( iv_id_work_order = 123456789 ).
-
-**   Creacion orden de trabajo
-*    me->create_work_order(
-*     EXPORTING
-*        iv_id_work_order = 123456789
-*        iv_id_customer   = 'CUST999'
-*        iv_id_technician = 'TECH999'
-*        iv_priority   = 'B'
-*        out           = out ).
+*
 
   ENDMETHOD.
 
@@ -103,6 +97,26 @@ CLASS zcl_work_order_crud_handlerjcc IMPLEMENTATION.
         RETURN.
     ENDTRY.
 
+    SELECT MAX( id_history )
+    FROM ztwork_orderhjcc
+    INTO @DATA(lv_max_id).
+
+    lv_new_id = lv_max_id + 1.
+
+    TRY.
+        INSERT ztwork_orderhjcc FROM TABLE @(  VALUE #(  (  id_history = lv_new_id
+                                                            id_work_order = iv_id_work_order
+                                                            date_modification = cl_abap_context_info=>get_system_date(  )
+                                                            description_change = iv_description ) ) ).
+        IF  sy-subrc EQ 0.
+          out->write( |Historial insertado correctamente. Registro: { sy-dbcnt }| ).
+        ENDIF.
+      CATCH cx_sy_open_sql_db INTO DATA(lx_errorr).
+        out->write( |Error SQL: { lx_errorr->get_text( ) }| ).
+        RETURN.
+    ENDTRY.
+
+
   ENDMETHOD.
 
   METHOD update_work_order.
@@ -120,6 +134,25 @@ CLASS zcl_work_order_crud_handlerjcc IMPLEMENTATION.
         ENDIF.
       CATCH cx_sy_open_sql_db INTO DATA(lx_error).
         out->write( |Error SQL: { lx_error->get_text( ) }| ).
+        RETURN.
+    ENDTRY.
+
+    SELECT MAX( id_history )
+    FROM ztwork_orderhjcc
+    INTO @DATA(lv_max_id).
+
+    lv_new_id = lv_max_id + 1.
+
+    TRY.
+        INSERT ztwork_orderhjcc FROM TABLE @(  VALUE #(  (  id_history = lv_new_id
+                                                            id_work_order = iv_id_work_order
+                                                            date_modification = cl_abap_context_info=>get_system_date(  )
+                                                            description_change = iv_description ) ) ).
+        IF  sy-subrc EQ 0.
+          out->write( |Historial actualizado correctamente. Registro: { sy-dbcnt }| ).
+        ENDIF.
+      CATCH cx_sy_open_sql_db INTO DATA(lx_errorr).
+        out->write( |Error SQL: { lx_errorr->get_text( ) }| ).
         RETURN.
     ENDTRY.
 

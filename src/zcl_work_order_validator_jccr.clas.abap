@@ -73,7 +73,7 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       go_crud = NEW zcl_work_order_crud_handlerjcc( out ).
     ENDIF.
 
-    DATA(lv_operacion) = 'UPDATE'.
+    DATA(lv_operacion) = 'ELIMINARCLIENTE'.
     .
     CASE lv_operacion.
 
@@ -183,7 +183,17 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
       WHEN 'DELETE'.
         "   Eliminacion orden de trabajo
-*
+           IF me->validate_delete_order(
+                     iv_id_work_order   = '0000000000'
+                     iv_status      = 'PE'
+                     out              = out ).
+
+             go_crud->delete_work_order(
+             EXPORTING
+                               iv_id_work_order = '0123456789' ).
+
+           ENDIF.
+           RETURN.
 
       WHEN 'ESTADOYPRIORIDAD'.
         "   Estado y prioridad
@@ -261,22 +271,23 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
   METHOD validate_delete_order.
 
     " Validación de parámetros
-*    IF        iv_status IS INITIAL.
-*      rv_valid = abap_false.
-*      RETURN.
-*    ENDIF.
-
-    IF iv_id_work_order IS INITIAL OR
-   iv_status IS INITIAL.
+    IF iv_status IS INITIAL OR
+       iv_id_work_order IS INITIAL.
       rv_valid = abap_false.
       RETURN.
     ENDIF.
 
-    Go_crud->delete_work_order(
-      EXPORTING
-        iv_id_work_order   = iv_id_work_order ).
+    IF check_order_history( iv_id_work_order = iv_id_work_order
+                              out            = out            ) = abap_false.
+       out->write( 'Order have history' ).
+       RETURN.
+    ENDIF.
 
-    rv_valid = abap_true.
+    IF iv_status EQ 'PE'.
+      rv_valid = abap_true.
+      out->write( 'Invalid status' ).
+      RETURN.
+    ENDIF.
 
   ENDMETHOD.
 
@@ -288,8 +299,24 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    rv_valid = abap_true.
+    IF NOT iv_priority EQ 'A' OR iv_priority EQ 'B'.
+      rv_valid = abap_false.
+      out->write( 'Invalid priority' ).
+      RETURN.
+    ENDIF.
 
+    IF NOT iv_status EQ 'PE' OR iv_status EQ 'CO'.
+      rv_valid = abap_true.
+      out->write( 'Invalid status' ).
+      RETURN.
+    ENDIF.
+
+
+*     check_order_exists
+
+
+
+    rv_valid = abap_true.
 
   ENDMETHOD.
 
@@ -333,14 +360,10 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
         WHERE id_technicial EQ @iv_id_technician
         INTO @DATA(ls_technicial).
         IF sy-subrc EQ 0.
-
           rv_exists = abap_true.
-
           out->write( name = 'technicial: '
                       data = ls_technicial ).
-
         ENDIF.
-
       CATCH cx_sy_open_sql_db INTO DATA(lx_error).
         out->write( |Error SQL: { lx_error->get_text( ) }| ).
         RETURN.
@@ -353,7 +376,6 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
     CLEAR rv_exists.
 
     TRY.
-
         SELECT * FROM ztwork_order_jcc
         WHERE id_work_order EQ @iv_id_work_order
         INTO @DATA(ls_work_order).
@@ -366,7 +388,6 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
       CATCH cx_sy_open_sql_db INTO DATA(lx_error).
         out->write( |Error SQL: { lx_error->get_text( ) }| ).
         RETURN.
-
     ENDTRY.
 
   ENDMETHOD.
@@ -377,19 +398,15 @@ CLASS zcl_work_order_validator_jccr IMPLEMENTATION.
 
     TRY.
 
-        SELECT SINGLE id_work_order
-          FROM ztwork_orderhjcc
+        SELECT * FROM ztwork_orderhjcc
         WHERE id_work_order EQ @iv_id_work_order
         INTO @DATA(ls_work_order).
+        ENDSELECT.
         IF sy-subrc EQ 0.
-
           rv_exists = abap_true.
-
           out->write( name = 'work_order history: '
                       data = ls_work_order ).
-
         ENDIF.
-
       CATCH cx_sy_open_sql_db INTO DATA(lx_error).
         out->write( |Error SQL: { lx_error->get_text( ) }| ).
         RETURN.
