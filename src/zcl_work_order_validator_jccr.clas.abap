@@ -71,8 +71,8 @@ CLASS zcl_work_order_validator_jccr DEFINITION
                   END OF mc_valid_status,
 
                   BEGIN OF mc_valid_priority,
-                    high   TYPE zde_priority_jccr VALUE 'A',
-                    low TYPE zde_priority_jccr VALUE 'B',
+                    high TYPE zde_priority_jccr VALUE 'A',
+                    low  TYPE zde_priority_jccr VALUE 'B',
                   END OF mc_valid_priority.
 
      DATA: mt_valid_status   TYPE RANGE OF zde_status_jccr,
@@ -272,6 +272,8 @@ ENDMETHOD.
 
   METHOD validate_create_order.
 
+    CLEAR rv_valid.
+
     " Validación de parámetros
     IF iv_id_customer  IS INITIAL OR
        iv_id_technician IS INITIAL OR
@@ -282,8 +284,8 @@ ENDMETHOD.
 
     IF check_customer_exists( iv_id_customer = iv_id_customer
                               out            = out            ) = abap_false.
-       out->write( 'Customer not exists' ).
-       RETURN.
+      out->write( 'Customer not exists' ).
+      RETURN.
     ENDIF.
 
     IF check_technician_exists( iv_id_technician = iv_id_technician
@@ -292,8 +294,8 @@ ENDMETHOD.
       RETURN.
     ENDIF.
 
-    IF iv_priority NE 'A' AND iv_priority NE 'B'.
-      out->write( 'Invalid priority' ).
+    IF iv_priority NOT IN mt_valid_priority.
+      rv_valid = abap_false.
       RETURN.
     ENDIF.
 
@@ -302,6 +304,8 @@ ENDMETHOD.
   ENDMETHOD.
 
   METHOD validate_update_order.
+
+    CLEAR rv_valid.
 
     " Validación de parámetros
     IF iv_id_work_order   IS INITIAL OR
@@ -312,12 +316,12 @@ ENDMETHOD.
 
     IF check_order_exists( iv_id_work_order = iv_id_work_order
                               out            = out            ) = abap_false.
-       out->write( 'Order not exists' ).
-       RETURN.
+      out->write( 'Order not exists' ).
+      RETURN.
     ENDIF.
 
-    IF iv_status NE 'PE'.
-      out->write( 'Invalid status' ).
+    IF iv_status EQ mc_valid_status-completed.
+      rv_valid = abap_false.
       RETURN.
     ENDIF.
 
@@ -327,6 +331,8 @@ ENDMETHOD.
 
   METHOD validate_delete_order.
 
+    CLEAR rv_valid.
+
     " Validación de parámetros
     IF iv_status IS INITIAL OR
        iv_id_work_order IS INITIAL.
@@ -334,23 +340,25 @@ ENDMETHOD.
       RETURN.
     ENDIF.
 
-        IF iv_status NE 'PE'.
-          out->write( 'Order status is not pending' ).
-          RETURN.
-        ENDIF.
+    IF iv_status NE mc_valid_status-pending.
+      rv_valid = abap_false.
+      RETURN.
+    ENDIF.
 
-        IF check_order_history( iv_id_work_order = iv_id_work_order
-                                  out            = out            ) = abap_false.
-          out->write( 'Order have history' ).
-          RETURN.
-        ENDIF.
+    IF check_order_history( iv_id_work_order = iv_id_work_order
+                              out            = out            ) = abap_false.
+      out->write( 'Order have history' ).
+      RETURN.
+    ENDIF.
 
-       rv_valid = abap_true.
+    rv_valid = abap_true.
 
   ENDMETHOD.
 
 
   METHOD validate_status_and_priority.
+
+    CLEAR rv_valid.
 
     IF iv_status IS INITIAL OR
        iv_priority IS INITIAL.
@@ -358,17 +366,17 @@ ENDMETHOD.
       RETURN.
     ENDIF.
 
-   IF iv_status NOT IN mt_valid_status.
-    rv_valid = abap_false.
-    RETURN.
-  ENDIF.
+    IF iv_status NOT IN mt_valid_status.
+      rv_valid = abap_false.
+      RETURN.
+    ENDIF.
 
-  IF iv_priority NOT IN mt_valid_priority.
-       rv_valid = abap_false.
-    RETURN.
-  ENDIF.
+    IF iv_priority NOT IN mt_valid_priority.
+      rv_valid = abap_false.
+      RETURN.
+    ENDIF.
 
-  rv_valid = abap_true.
+    rv_valid = abap_true.
 
   ENDMETHOD.
 
@@ -377,8 +385,6 @@ ENDMETHOD.
     CLEAR rv_exists.
 
     TRY.
-
-
         SELECT SINGLE id_customer,
                       name
           FROM ztcustomer_jcc
@@ -469,6 +475,8 @@ ENDMETHOD.
 
 METHOD check_status.
 
+  CLEAR rv_exists.
+
   IF iv_status NOT IN mt_valid_status.
     rv_exists = abap_false.
     RETURN.
@@ -480,8 +488,10 @@ ENDMETHOD.
 
 METHOD check_priority.
 
-IF iv_priority NOT IN mt_valid_priority.
-       rv_exists = abap_false.
+  CLEAR rv_exists.
+
+  IF iv_priority NOT IN mt_valid_priority.
+    rv_exists = abap_false.
     RETURN.
   ENDIF.
 
