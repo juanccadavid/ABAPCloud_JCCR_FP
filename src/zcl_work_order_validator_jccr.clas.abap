@@ -112,11 +112,11 @@ METHOD if_oo_adt_classrun~main.
           lv_priority      TYPE zde_priority_jccr VALUE 'B',
           lv_description   TYPE zde_description_jccr VALUE 'Prueba actualización en status CO',
 
-          lv_name_client TYPE string VALUE 'Fep Cadavid',
+          lv_name_client TYPE string VALUE 'A Cadavid',
           lv_address_client TYPE string VALUE 'Calle 5 S N 8',
           lv_phone_client TYPE char13 VALUE 3126911427,
 
-          lv_name_technicial TYPE string VALUE 'Diana Restrepo',
+          lv_name_technicial TYPE string VALUE 'D Restrepo',
           lv_specialty TYPE string VALUE 'Sales Specialist'.
 
     "OPERACION PRINCIPAL
