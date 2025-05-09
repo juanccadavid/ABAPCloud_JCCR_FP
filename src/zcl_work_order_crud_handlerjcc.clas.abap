@@ -68,7 +68,9 @@ CLASS zcl_work_order_crud_handlerjcc IMPLEMENTATION.
         ENDSELECT.
 
         IF  sy-subrc EQ 0.
-          me->out->write( name = 'work_order READ' data = ls_work_order ).
+          me->out->write( name = 'work_order info: ' data = ls_work_order ).
+        ELSE.
+          me->out->write( 'Orden no encontrada' ).
         ENDIF.
       CATCH cx_sy_open_sql_db INTO DATA(lx_error).
         out->write( |Error SQL: { lx_error->get_text( ) }| ).

@@ -8,11 +8,7 @@ CLASS zcl_work_order_validator_jccr DEFINITION
     INTERFACES : if_oo_adt_classrun.
 
     METHODS:
-      "
-      read_order IMPORTING iv_id_work_order TYPE zde_work_order_id_jccr
-                           out              TYPE REF TO if_oo_adt_classrun_out
-                 RETURNING VALUE(rv_valid)  TYPE abap_bool,
-
+      "Declaracion de metodos de validación
       validate_create_order IMPORTING iv_id_customer   TYPE zde_costumer_id_jccr
                                       iv_id_technician TYPE zde_technician_id_jccr
                                       iv_priority      TYPE zde_priority_jccr
@@ -34,17 +30,19 @@ CLASS zcl_work_order_validator_jccr DEFINITION
                                              iv_priority      TYPE zde_priority_jccr
                                              out              TYPE REF TO if_oo_adt_classrun_out
                                    RETURNING VALUE(rv_valid)  TYPE abap_bool,
+      "Constructor
       constructor.
 
   PROTECTED SECTION.
   PRIVATE SECTION.
-
+    "Variable para errores SQL
     DATA: lx_error TYPE REF TO cx_sy_open_sql_db.
 
     "Lllamar la clase con los metodos CRUD
     DATA: go_crud TYPE REF TO zcl_work_order_crud_handlerjcc.
 
     METHODS:
+    "Declaracion metodos para consultas
       check_customer_exists IMPORTING iv_id_customer   TYPE zde_costumer_id_jccr
                                       out              TYPE REF TO if_oo_adt_classrun_out
                             RETURNING VALUE(rv_exists) TYPE abap_bool,
@@ -74,7 +72,7 @@ CLASS zcl_work_order_validator_jccr DEFINITION
                     high TYPE zde_priority_jccr VALUE 'A',
                     low  TYPE zde_priority_jccr VALUE 'B',
                   END OF mc_valid_priority.
-
+     "Rangos
      DATA: mt_valid_status   TYPE RANGE OF zde_status_jccr,
            mT_valid_priority TYPE RANGE OF zde_priority_jccr.
 
@@ -99,13 +97,15 @@ mt_valid_priority = VALUE #( ( sign = 'I'
                              low = mc_valid_priority-low ) ).
 ENDMETHOD.
 
-  METHOD if_oo_adt_classrun~main.
+METHOD if_oo_adt_classrun~main.
 
+     "Lllamar la clase que contiene los metodos con las operaciones CRUD
     IF go_crud IS INITIAL.
       go_crud = NEW zcl_work_order_crud_handlerjcc( out ).
     ENDIF.
 
-    DATA: lv_id_work_order TYPE zde_work_order_id_jccr VALUE '0323456789',
+    "Entrada manual de datos
+    DATA: lv_id_work_order TYPE zde_work_order_id_jccr VALUE '0123456789',
           lv_id_customer   TYPE zde_costumer_id_jccr VALUE '2',
           lv_id_technician TYPE zde_technician_id_jccr VALUE '01',
           lv_status        TYPE zde_status_jccr VALUE 'PE',
@@ -117,10 +117,10 @@ ENDMETHOD.
           lv_phone_client TYPE char13 VALUE 3126911427,
 
           lv_name_technicial TYPE string VALUE 'Diana Restrepo',
-          lv_name_specialty TYPE string VALUE 'Sales Specialist'.
+          lv_specialty TYPE string VALUE 'Sales Specialist'.
 
     "OPERACION PRINCIPAL
-    DATA(lv_operacion) = 'ESTADOYPRIORIDAD'.
+    DATA(lv_operacion) = 'READ'.
 
     CASE lv_operacion.
 
@@ -154,7 +154,7 @@ ENDMETHOD.
         TRY.
             INSERT zttechnician_jcc FROM TABLE @(  VALUE #(  (  id_technicial = lv_id_technician
                                                                 name = lv_name_technicial
-                                                                specialty = lv_name_specialty ) ) ).
+                                                                specialty = lv_specialty ) ) ).
             IF  sy-subrc EQ 0.
               out->write( |Tecnico creado correctamente. Registro: { sy-dbcnt }| ).
             ENDIF.
@@ -183,18 +183,20 @@ ENDMETHOD.
 *      ID 'ACTVT' FIELD '03'.
 *
 *      IF sy-subrc EQ 0.
-*        read_order( iv_id_work_order = lv_id_work_order
-*                    out              = out ).
-*      ELSE.
+*      go_crud->read_work_order(
+*      EXPORTING
+*                iv_id_work_order = lv_id_work_order ).
+**      ELSE.
 *      out->write( 'No tiene autorización para ejecutar la acción' ).
 *      ENDIF.
 
-      read_order( iv_id_work_order = lv_id_work_order
-                    out              = out ).
+      go_crud->read_work_order(
+      EXPORTING
+                iv_id_work_order = lv_id_work_order ).
+
 
      WHEN 'CREATE'.
       "   Creacion orden de trabajo
-
         IF me->validate_create_order(
                      iv_id_customer   = lv_id_customer
                      iv_id_technician = lv_id_technician
@@ -215,7 +217,6 @@ ENDMETHOD.
 
       WHEN 'UPDATE'.
         "   Actualizacion orden de trabajo
-
           IF me->validate_update_order(
                      iv_id_work_order   = lv_id_work_order
                      iv_id_customer   = lv_id_customer
@@ -236,7 +237,6 @@ ENDMETHOD.
 
     WHEN 'DELETE'.
       "   Eliminacion orden de trabajo
-
         IF me->validate_delete_order(
                   iv_id_work_order   = lv_id_work_order
                   iv_status      = lv_status
@@ -248,6 +248,7 @@ ENDMETHOD.
 
         ENDIF.
         RETURN.
+
 
       WHEN 'ESTADOYPRIORIDAD'.
         "   Estado y prioridad
@@ -262,13 +263,6 @@ ENDMETHOD.
 
   ENDMETHOD.
 
-  METHOD read_order.
-
-    go_crud->read_work_order(
-      EXPORTING
-        iv_id_work_order   = iv_id_work_order ).
-
-  ENDMETHOD.
 
   METHOD validate_create_order.
 
@@ -363,6 +357,7 @@ ENDMETHOD.
 
     CLEAR rv_valid.
 
+    " Validación de parámetros
     IF iv_status IS INITIAL OR
        iv_priority IS INITIAL.
       rv_valid = abap_false.
@@ -396,14 +391,10 @@ ENDMETHOD.
         WHERE id_customer EQ @iv_id_customer
         INTO @DATA(ls_customer).
         IF sy-subrc EQ 0.
-
           rv_exists = abap_true.
-
           out->write( name = 'Customer: '
                       data = ls_customer   ).
-
         ENDIF.
-
       CATCH cx_sy_open_sql_db INTO DATA(lx_error).
         out->write( |Error SQL: { lx_error->get_text( ) }| ).
         RETURN.
@@ -419,7 +410,7 @@ ENDMETHOD.
 
         SELECT SINGLE id_technicial,
                       name
-          FROM zttechnician_jcc
+        FROM zttechnician_jcc
         WHERE id_technicial EQ @iv_id_technician
         INTO @DATA(ls_technicial).
         IF sy-subrc EQ 0.
